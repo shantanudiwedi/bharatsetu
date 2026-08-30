@@ -38,4 +38,4 @@ Inputs (bidder docs + eligibility rules) → Orchestrator
 🚧 In development — SIH 2026 internal round submission
 
 ## Team AXON
-Shantanu Diwedi | Sarthak Gaikwad | Purnima Dwivedi| Mahesh Giram | Aayush Satarkar | Sumedh Jadhav 
+Shantanu Diwedi | Sarthak Gaikwad | Purnima Dwivedi | Mahesh Giram | Aayush Satarkar | Sumedh Jadhav 
