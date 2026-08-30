@@ -26,8 +26,13 @@ Inputs (bidder docs + eligibility rules) → Orchestrator
 5-layer system: Experience → Application → Intelligence → Data → Integration
 
 ## Tech Stack
-[fill in once decided — e.g. React/Tailwind frontend, FastAPI backend, 
-OCR (Tesseract/Cloud Vision), NLP entity extraction, PostgreSQL]
+- Frontend: React + Tailwind CSS
+- Backend: FastAPI (Python)
+- OCR: Tesseract (pytesseract)
+- NLP: Regex + spaCy for entity extraction
+- Rules Engine: Config-driven (JSON/YAML) Python logic
+- Database: SQLite (dev) 
+- Deployment: Vercel (frontend), Render (backend)
 
 ## Status
 🚧 In development — SIH 2026 internal round submission
