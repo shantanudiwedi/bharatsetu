@@ -1,2 +1,41 @@
-# bharatsetu
-AI-powered bid compliance verification platform for GeM procurement — SIH26100 | Team AXON
+# BharatSetu
+
+AI-Powered Integrated Bid Compliance Verification Platform for GeM Procurement
+
+**Problem Statement:** SIH26100 (Smart India Hackathon 2026)
+**Ministry:** Petroleum & Natural Gas (CPCL)
+**Team:** AXON
+
+## Overview
+BharatSetu automates bidder compliance verification for GeM procurement — 
+checking Udyam/MSME, GST, PAN, EPFO, and blacklist status against tender 
+eligibility rules, producing a Compliance Score, Risk Level, and 
+AI Recommendation. The officer always makes the final decision — 
+AI never auto-approves or auto-rejects.
+
+## Core Features
+- **Officer Dashboard** — bidder list, risk levels, flagged issues, sortable/filterable
+- **Bidder Self-Check Portal** — upload documents, see flags before final submission
+- **Full audit trail** — every check logged with source, confidence, timestamp
+
+## Architecture
+Inputs (bidder docs + eligibility rules) → Orchestrator 
+(Document Extraction Agent → Cross-Check Agent → Risk Scoring Agent) 
+→ Decisions (Compliance Score + Risk Level + Recommendation, officer decides)
+
+5-layer system: Experience → Application → Intelligence → Data → Integration
+
+## Tech Stack
+[fill in once decided — e.g. React/Tailwind frontend, FastAPI backend, 
+OCR (Tesseract/Cloud Vision), NLP entity extraction, PostgreSQL]
+
+## Status
+🚧 In development — SIH 2026 internal round submission
+
+## Team AXON
+Shantanu Diwedi 
+Sarthak Gaikwad 
+Purnima Dwivedi
+Mahesh Giram 
+Aayush Satarkar 
+Sumedh Jadhav 
