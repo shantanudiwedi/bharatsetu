@@ -35,7 +35,7 @@ Inputs (bidder docs + eligibility rules) → Orchestrator
 - Deployment: Vercel (frontend), Render (backend)
 
 ## Status
-🚧 In development — SIH 2026 internal round submission
+https://bharatsetu-hsgd5oehm-shantanudiwedis-projects.vercel.app/
 
 ## Team AXON
 Shantanu Diwedi | Sarthak Gaikwad | Purnima Dwivedi | Mahesh Giram | Aayush Satarkar | Sumedh Jadhav 
