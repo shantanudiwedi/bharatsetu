@@ -1,10 +1,29 @@
 {
-  "buildCommand": "npm ci --prefix Frontend && npm run build --prefix Frontend",
-  "outputDirectory": "Frontend/dist",
+  "services": {
+    "frontend": {
+      "root": "Frontend/",
+      "framework": "vite",
+      "buildCommand": "npm ci && npm run build",
+      "outputDirectory": "dist"
+    },
+    "backend": {
+      "root": "./",
+      "framework": "fastapi",
+      "entrypoint": "api/index.py"
+    }
+  },
   "rewrites": [
     {
-      "source": "/((?!api(?:/|$)|.*\\.).*)",
-      "destination": "/index.html"
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }
