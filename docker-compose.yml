@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./bharatsetu.db
+      - JWT_SECRET=${JWT_SECRET:-development-only-change-this-secret}
+      - VERIFICATION_MODE=mock
+      - OCR_ENABLED=true
+    volumes:
+      - ./uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend

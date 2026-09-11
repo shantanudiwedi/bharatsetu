@@ -1,0 +1,43 @@
+import os
+from pathlib import Path
+from pydantic_settings import BaseSettings
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_DB_PATH = BASE_DIR / "bharatsetu.db"
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "BharatSetu Bid Compliance Verification Platform"
+    API_V1_STR: str = "/api"
+    SECRET_KEY: str = os.getenv("JWT_SECRET", "development-only-change-this-secret")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    
+    # Database
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
+    
+    # Storage & Uploads
+    UPLOAD_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../uploads"))
+    MAX_FILE_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 MB max
+    ALLOWED_EXTENSIONS: set = {".pdf", ".png", ".jpg", ".jpeg"}
+
+    # CORS
+    ALLOWED_ORIGINS: list = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://0.0.0.0:4173"
+    ]
+    
+    # Modes
+    VERIFICATION_MODE: str = os.getenv("VERIFICATION_MODE", "mock")  # mock | production
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "mock")  # mock | openai | gemini
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
+    OCR_ENABLED: bool = os.getenv("OCR_ENABLED", "true").lower() == "true"
+
+    class Config:
+        case_sensitive = True
+
+settings = Settings()
+
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

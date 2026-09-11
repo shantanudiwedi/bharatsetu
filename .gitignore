@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# SQLite and runtime files
+*.db
+*.sqlite
+*.sqlite3
+*.log
+coverage/
+
+# Uploads: runtime-generated documents are never source-controlled.
+uploads/*
+!uploads/.gitkeep
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated test/runtime directories
+test_pdfs/
