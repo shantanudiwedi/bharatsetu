@@ -1,10 +1,11 @@
 import os
+import tempfile
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DB_PATH = BASE_DIR / "bharatsetu.db"
-VERCEL_DB_PATH = "/tmp/bharatsetu.db"
+VERCEL_DB_PATH = Path(tempfile.gettempdir()) / "bharatsetu.db"
 
 
 def _default_database_url() -> str:
