@@ -108,8 +108,6 @@ def seed_db():
             department="CPCL Industrial Procurement Wing"
         )
         db.add(officer_user)
-    else:
-        officer_user.hashed_password = get_password_hash("officer123")
 
     admin_user = db.query(User).filter(User.email == "admin@bharatsetu.gov.in").first()
     if not admin_user:
@@ -121,8 +119,6 @@ def seed_db():
             department="CPCL IT Operations"
         )
         db.add(admin_user)
-    else:
-        admin_user.hashed_password = get_password_hash("admin123")
 
     db.commit()
 
@@ -172,7 +168,6 @@ def seed_db():
         )
         db.add(bidder_a)
     else:
-        bidder_a.hashed_password = get_password_hash("bidder123")
         bidder_a.vendor_id = vendor_a.id
 
     bidder_b = db.query(User).filter(User.email == "bidderb@bharatsetu.gov.in").first()
@@ -187,7 +182,6 @@ def seed_db():
         )
         db.add(bidder_b)
     else:
-        bidder_b.hashed_password = get_password_hash("bidder123")
         bidder_b.vendor_id = vendor_b.id
     db.commit()
 
@@ -204,7 +198,6 @@ def seed_db():
         )
         db.add(bidder_default)
     else:
-        bidder_default.hashed_password = get_password_hash("bidder123")
         bidder_default.vendor_id = vendor_a.id
         bidder_default.full_name = "Rajesh Verma"
         bidder_default.department = "Verma Industries"
@@ -469,6 +462,60 @@ def seed_db():
     db.commit()
 
     db.close()
+
+
+def seed_demo_users():
+    """Create only the intended demo identities without changing existing passwords."""
+    Base.metadata.create_all(bind=engine)
+    db: Session = SessionLocal()
+    try:
+        vendor_a = db.query(Vendor).filter(Vendor.name == "TechCorp India Pvt Ltd").first()
+        if not vendor_a:
+            vendor_a = Vendor(
+                name="TechCorp India Pvt Ltd",
+                gstin="27ABCDE1234F1Z5",
+                pan="ABCDE1234F",
+                udyam="UDYAM-MH-00-1234567",
+                epfo_code="MH/MUM/0012345",
+                address="Plot 14, MIDC Industrial Area, Andheri East, Mumbai, Maharashtra",
+            )
+            db.add(vendor_a)
+            db.flush()
+
+        vendor_b = db.query(Vendor).filter(Vendor.name == "Global Heavy Industries").first()
+        if not vendor_b:
+            vendor_b = Vendor(
+                name="Global Heavy Industries",
+                gstin="33VWXYZ5678G2ZP",
+                pan="VWXYZ5678G",
+                udyam="UDYAM-DL-11-7654321",
+                epfo_code="DL/DEL/0076543",
+                address="B-42, Okhla Industrial Estate, New Delhi",
+            )
+            db.add(vendor_b)
+            db.flush()
+
+        demo_users = (
+            ("officer@bharatsetu.gov.in", "officer123", "Anil Kumar", "PROCUREMENT_OFFICER", "CPCL Industrial Procurement Wing", None),
+            ("admin@bharatsetu.gov.in", "admin123", "S. Meena", "ADMIN", "CPCL IT Operations", None),
+            ("biddera@bharatsetu.gov.in", "bidder123", "TechCorp India Pvt Ltd", "BIDDER", "Vendor", vendor_a.id),
+            ("bidderb@bharatsetu.gov.in", "bidder123", "Global Heavy Industries", "BIDDER", "Vendor", vendor_b.id),
+            ("bidder@bharatsetu.gov.in", "bidder123", "Rajesh Verma", "BIDDER", "Verma Industries", vendor_a.id),
+        )
+        for email, password, full_name, role, department, vendor_id in demo_users:
+            if not db.query(User).filter(User.email == email).first():
+                db.add(User(
+                    email=email,
+                    hashed_password=get_password_hash(password),
+                    full_name=full_name,
+                    role=role,
+                    department=department,
+                    vendor_id=vendor_id,
+                    is_active=True,
+                ))
+        db.commit()
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

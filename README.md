@@ -167,6 +167,16 @@ the boundary remains **Officer Decides. AI Verifies.**
 
 - **Procurement Officer**: `officer@bharatsetu.gov.in` / `officer123`
 - **Admin**: `admin@bharatsetu.gov.in` / `admin123`
+- **Bidder**: `bidder@bharatsetu.gov.in` / `bidder123`
+
+On Vercel, when `DATABASE_URL` is not configured, the FastAPI startup creates
+the schema and these five intended demo identities (the officer, admin, and
+three bidder accounts) in an ephemeral `/tmp` SQLite database. Existing users
+are never overwritten and passwords continue to use the application's PBKDF2
+hashing. This makes the SIH demo login available after a cold start, but it is
+not durable: warm instances may have different state and uploaded documents,
+registrations, and database changes can be lost. Use an external PostgreSQL
+database and durable object storage for persistent deployment.
 
 ### Pre-Seeded Demonstration Cases:
 1. **Shree Lakshmi Industries Pvt Ltd** (HIGH RISK, Score 87): GST address mismatch (Pune vs Nagpur) & EPFO establishment issue.

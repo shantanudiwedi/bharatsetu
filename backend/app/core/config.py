@@ -4,6 +4,14 @@ from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DB_PATH = BASE_DIR / "bharatsetu.db"
+VERCEL_DB_PATH = "/tmp/bharatsetu.db"
+
+
+def _default_database_url() -> str:
+    """Use writable ephemeral storage for the Vercel demo when unset."""
+    if os.getenv("VERCEL"):
+        return f"sqlite:///{VERCEL_DB_PATH}"
+    return f"sqlite:///{DEFAULT_DB_PATH}"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "BharatSetu Bid Compliance Verification Platform"
@@ -12,7 +20,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
+    DATABASE_URL: str = os.getenv("DATABASE_URL") or _default_database_url()
     
     # Storage & Uploads
     UPLOAD_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../uploads"))

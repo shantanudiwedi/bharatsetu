@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.database import engine, Base, run_migrations
-from app.db.seed_data import seed_db
+from app.db.seed_data import seed_db, seed_demo_users
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.tenders import router as tenders_router
@@ -55,7 +55,10 @@ app.include_router(ai_router, prefix=settings.API_V1_STR)
 def on_startup():
     Base.metadata.create_all(bind=engine)
     run_migrations()
-    seed_db()
+    if os.getenv("VERCEL"):
+        seed_demo_users()
+    else:
+        seed_db()
 
 
 @app.get("/")
