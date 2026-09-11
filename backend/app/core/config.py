@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DB_PATH = BASE_DIR / "bharatsetu.db"
 VERCEL_DB_PATH = Path(tempfile.gettempdir()) / "bharatsetu.db"
+DEFAULT_UPLOAD_DIR = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../uploads")))
+VERCEL_UPLOAD_DIR = Path(tempfile.gettempdir()) / "bharatsetu_uploads"
 
 
 def _default_database_url() -> str:
@@ -13,6 +15,12 @@ def _default_database_url() -> str:
     if os.getenv("VERCEL"):
         return f"sqlite:///{VERCEL_DB_PATH}"
     return f"sqlite:///{DEFAULT_DB_PATH}"
+
+
+def _default_upload_dir() -> str:
+    if os.getenv("VERCEL"):
+        return str(VERCEL_UPLOAD_DIR)
+    return os.getenv("UPLOAD_DIR") or str(DEFAULT_UPLOAD_DIR)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "BharatSetu Bid Compliance Verification Platform"
@@ -24,7 +32,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL") or _default_database_url()
     
     # Storage & Uploads
-    UPLOAD_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../uploads"))
+    UPLOAD_DIR: str = _default_upload_dir()
     MAX_FILE_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 MB max
     ALLOWED_EXTENSIONS: set = {".pdf", ".png", ".jpg", ".jpeg"}
 
