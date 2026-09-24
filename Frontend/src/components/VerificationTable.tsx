@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ChevronRight,
   ShieldCheck,
@@ -33,38 +33,38 @@ import {
   downloadComplianceReportApi
 } from '@/services/api';
 import { formatINR } from '@/utils/formatINR';
-
-const riskConfig: Record<'low' | 'medium' | 'high', { label: string; cls: string; icon: typeof ShieldCheck }> = {
-  low: { label: 'Low Risk', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: ShieldCheck },
-  medium: { label: 'Medium Risk', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: ShieldAlert },
-  high: { label: 'High Risk', cls: 'bg-red-50 text-red-700 border-red-200', icon: ShieldX },
-};
-
-const statusConfig: Record<string, { label: string; cls: string; dot: string }> = {
-  pending_review: { label: 'Pending Review', cls: 'bg-navy-50 text-navy-700', dot: 'bg-navy-500' },
-  approved: { label: 'Approved', cls: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
-  rejected: { label: 'Rejected', cls: 'bg-red-50 text-red-700', dot: 'bg-red-500' },
-  flagged: { label: 'Flagged', cls: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
-};
-
-const docStatusConfig: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
-  verified: { icon: CheckCircle2, color: 'text-emerald-500', label: 'Verified' },
-  failed: { icon: XCircle, color: 'text-red-500', label: 'Failed' },
-  pending: { icon: Clock3, color: 'text-amber-500', label: 'Pending' },
-  uploaded: { icon: Clock3, color: 'text-amber-500', label: 'Uploaded' },
-  processing: { icon: Clock3, color: 'text-amber-500', label: 'Processing' },
-  in_progress: { icon: Clock3, color: 'text-amber-500', label: 'In Progress' },
-  manual_review_required: { icon: Clock3, color: 'text-amber-500', label: 'Manual Review' },
-  warning: { icon: Clock3, color: 'text-amber-500', label: 'Warning' },
-};
+import { useTranslation } from '@/i18n';
 
 export default function VerificationTable({ searchTerm = '', currentUser, listMode = 'bids' }: { searchTerm?: string; currentUser?: any; listMode?: 'bids' | 'documents' }) {
+  const { t } = useTranslation();
+  const riskConfig: Record<'low' | 'medium' | 'high', { label: string; cls: string; icon: typeof ShieldCheck }> = {
+    low: { label: t('lowRisk'), cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: ShieldCheck },
+    medium: { label: t('mediumRisk'), cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: ShieldAlert },
+    high: { label: t('highRisk'), cls: 'bg-red-50 text-red-700 border-red-200', icon: ShieldX },
+  };
+  const statusConfig: Record<string, { label: string; cls: string; dot: string }> = {
+    pending_review: { label: t('pendingReviewStatus'), cls: 'bg-navy-50 text-navy-700', dot: 'bg-navy-500' },
+    approved: { label: t('approved'), cls: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
+    rejected: { label: t('rejected'), cls: 'bg-red-50 text-red-700', dot: 'bg-red-500' },
+    flagged: { label: t('flagged'), cls: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
+  };
+  const docStatusConfig: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
+    verified: { icon: CheckCircle2, color: 'text-emerald-500', label: t('verified') },
+    failed: { icon: XCircle, color: 'text-red-500', label: t('failed') },
+    pending: { icon: Clock3, color: 'text-amber-500', label: t('pending') },
+    uploaded: { icon: Clock3, color: 'text-amber-500', label: t('uploaded') },
+    processing: { icon: Clock3, color: 'text-amber-500', label: t('processing') },
+    in_progress: { icon: Clock3, color: 'text-amber-500', label: t('inProgress') },
+    manual_review_required: { icon: Clock3, color: 'text-amber-500', label: t('manualReview') },
+    warning: { icon: Clock3, color: 'text-amber-500', label: t('warning') },
+  };
   const [records, setRecords] = useState<BidRecord[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>('GEM-2026-04827');
   const [actionReason, setActionReason] = useState<string>('');
   const [activeActionModal, setActiveActionModal] = useState<{ id: string; action: 'reject' | 'escalate' } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [uploadingDoc, setUploadingDoc] = useState<boolean>(false);
+  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const loadBids = () => {
     setLoading(true);
@@ -124,10 +124,10 @@ export default function VerificationTable({ searchTerm = '', currentUser, listMo
     }
   };
 
-  const handleFileUpload = async (bidId: string, file: File) => {
+  const handleFileUpload = async (bidId: string, file: File, documentType?: string) => {
     setUploadingDoc(true);
     try {
-      await uploadBidDocument(bidId, file);
+      await uploadBidDocument(bidId, file, documentType);
       await triggerBidVerification(bidId);
       loadBids();
     } catch (err: any) {
@@ -188,12 +188,12 @@ export default function VerificationTable({ searchTerm = '', currentUser, listMo
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
         <div>
           <h3 className="text-base font-bold text-slate-800">
-            {listMode === 'documents' ? 'My Documents' : currentUser?.role === 'BIDDER' ? 'My Bids' : 'Verification Queue'}
+            {listMode === 'documents' ? t('myDocuments') : currentUser?.role === 'BIDDER' ? t('myBids') : t('verificationQueue')}
           </h3>
           <p className="text-[12px] text-slate-400 mt-0.5">
             {listMode === 'documents'
-              ? 'Uploaded bid documents and their validation status.'
-              : 'AI-assisted verification · Human procurement officer retains final authorization authority'}
+              ? t('documentStateDescription')
+              : t('aiAssistedVerification')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -202,7 +202,7 @@ export default function VerificationTable({ searchTerm = '', currentUser, listMo
             className="flex items-center gap-1 px-3 py-1.5 text-[13px] font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('refresh')}
           </button>
         </div>
       </div>
@@ -210,11 +210,11 @@ export default function VerificationTable({ searchTerm = '', currentUser, listMo
       {/* Column headers */}
       <div className="grid grid-cols-[40px_1.5fr_1fr_1fr_1fr_120px_40px] gap-3 px-6 py-3 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
         <div></div>
-        <div>Vendor</div>
-        <div>Category</div>
-        <div>Bid Amount</div>
-        <div>Documents</div>
-        <div>Risk Profile</div>
+        <div>{t('vendorColumn')}</div>
+        <div>{t('categoryColumn')}</div>
+        <div>{t('bidAmount')}</div>
+        <div>{t('documentsColumn')}</div>
+        <div>{t('riskProfile')}</div>
         <div></div>
       </div>
 
@@ -371,23 +371,59 @@ export default function VerificationTable({ searchTerm = '', currentUser, listMo
                       <div className="bg-white rounded-xl border border-slate-200 p-5">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-sm font-bold text-slate-800">Document Verification & Upload</h4>
-                          {currentUser?.role === 'BIDDER' && (
-                            <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-navy-700 bg-navy-50 border border-navy-200 rounded-lg cursor-pointer hover:bg-navy-100 transition-colors">
-                              <Upload className="w-3.5 h-3.5" />
-                              {uploadingDoc ? 'Uploading...' : 'Upload Document'}
-                              <input
-                                type="file"
-                                accept=".pdf,.png,.jpg,.jpeg"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    handleFileUpload(rec.id, e.target.files[0]);
-                                  }
-                                }}
-                              />
-                            </label>
-                          )}
                         </div>
+
+                        {currentUser?.role === 'BIDDER' && rec.requirements && rec.requirements.length > 0 && (
+                          <div className="mb-4 rounded-lg border border-slate-200 divide-y divide-slate-100">
+                            {rec.requirements.map((requirement) => {
+                                              const requirementType = requirement.document_type.trim().toUpperCase();
+                                              const matchingDocuments = rec.documents.filter((document) => (
+                                                (document.document_type || document.name || '').trim().toUpperCase() === requirementType
+                                              ));
+                                              const uploaded = matchingDocuments.length > 0;
+                                              const latestDocument = matchingDocuments[matchingDocuments.length - 1];
+                                              return (
+                                                <div key={requirementType} className="flex items-center gap-3 px-3 py-2.5">
+                                                  {uploaded ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <Clock3 className="w-4 h-4 text-slate-400 shrink-0" />}
+                                                  <div className="min-w-0 flex-1">
+                                                    <p className="text-xs font-bold text-slate-700">{requirementType}</p>
+                                                    <p className="text-[11px] text-slate-500">
+                                                      {uploadingDoc
+                                                        ? 'Uploading...'
+                                                        : uploaded
+                                                          ? `${latestDocument?.status === 'verified' ? 'Verified' : latestDocument?.status === 'failed' ? 'Failed - Replace available' : 'Uploaded - Pending Verification'}${latestDocument?.detail ? ` - ${latestDocument.detail}` : ''}`
+                                                          : requirement.is_mandatory ? 'Required - Not uploaded' : 'Optional - Not uploaded'}
+                                                    </p>
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    disabled={uploadingDoc}
+                                                    onClick={() => fileInputs.current[requirementType]?.click()}
+                                                    className="px-2.5 py-1.5 text-[11px] font-semibold text-navy-700 bg-navy-50 rounded-md hover:bg-navy-100 disabled:opacity-50"
+                                                  >
+                                                    {uploaded ? 'Replace' : 'Upload'}
+                                                  </button>
+                                                  <input
+                                                    ref={(input) => {
+                                                      fileInputs.current[requirementType] = input;
+                                                    }}
+                                                    type="file"
+                                                    accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                                                    className="sr-only"
+                                                    disabled={uploadingDoc}
+                                                    onChange={(event) => {
+                                                      const file = event.currentTarget.files?.[0];
+                                                      if (file) {
+                                                        void handleFileUpload(rec.id, file, requirementType);
+                                                      }
+                                                      event.currentTarget.value = '';
+                                                    }}
+                                                  />
+                                                </div>
+                                              );
+                                            })}
+                          </div>
+                        )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {rec.documents.map((doc, idx) => {
@@ -452,6 +488,23 @@ export default function VerificationTable({ searchTerm = '', currentUser, listMo
                                   >
                                     <Download className="w-3 h-3" /> Download
                                   </button>
+                                  {currentUser?.role === 'BIDDER' && (
+                                    <>
+                                      <span className="text-slate-300">|</span>
+                                      <button
+                                        type="button"
+                                        disabled={uploadingDoc}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const documentType = (doc.document_type || doc.name || '').trim().toUpperCase();
+                                          fileInputs.current[documentType]?.click();
+                                        }}
+                                        className="text-[11px] font-semibold text-navy-700 hover:text-navy-900 flex items-center gap-1 hover:underline disabled:opacity-50"
+                                      >
+                                        <RefreshCw className="w-3 h-3" /> Replace
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             );

@@ -13,6 +13,7 @@ import {
   FileText,
   Bell
 } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 interface SidebarProps {
   currentTab: string;
@@ -22,19 +23,30 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { id: 'tenders', icon: FileSearch, label: 'Tender Finder' },
-  { id: 'bids', icon: ClipboardCheck, label: 'My Bids' },
-  { id: 'documents', icon: FileText, label: 'My Documents' },
-  { id: 'alerts', icon: AlertTriangle, label: 'Compliance Alerts' },
+  { id: 'dashboard', icon: LayoutDashboard, key: 'dashboard' },
+  { id: 'tenders', icon: FileSearch, key: 'tenderFinder' },
+  { id: 'bids', icon: ClipboardCheck, key: 'myBids' },
+  { id: 'documents', icon: FileText, key: 'myDocuments' },
+  { id: 'alerts', icon: AlertTriangle, key: 'complianceAlerts' },
 ];
 
 const bottomItems = [
-  { id: 'support', icon: HelpCircle, label: 'AI Support' },
-  { id: 'settings', icon: Settings, label: 'Settings' },
+  { id: 'support', icon: HelpCircle, key: 'aiSupport' },
+  { id: 'settings', icon: Settings, key: 'settings' },
 ];
 
 export default function BidderSidebar({ currentTab, onTabChange, onOpenNewBid, currentUser }: SidebarProps) {
+  const { t } = useTranslation();
+  const translatedLabels: Record<string, string> = {
+    dashboard: t('dashboard'),
+    support: t('help'),
+    tenders: t('tenderFinder'),
+    bids: t('myBids'),
+    documents: t('myDocuments'),
+    alerts: t('complianceAlerts'),
+    settings: t('settings'),
+    logout: t('logout'),
+  };
   return (
     <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0 shrink-0">
       {/* Logo */}
@@ -45,7 +57,7 @@ export default function BidderSidebar({ currentTab, onTabChange, onOpenNewBid, c
           </div>
           <div>
             <h1 className="font-bold text-[15px] leading-tight tracking-tight">BharatSetu</h1>
-            <p className="text-[11px] text-indigo-300 font-medium">Bidder Portal</p>
+            <p className="text-[11px] text-indigo-300 font-medium">{t('bidderPortal')}</p>
           </div>
         </div>
       </div>
@@ -57,14 +69,14 @@ export default function BidderSidebar({ currentTab, onTabChange, onOpenNewBid, c
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>Upload Document / Bid</span>
+          <span>{t('uploadDocuments')} / Bid</span>
         </button>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-2 overflow-y-auto scrollbar-navy">
         <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Vendor Modules
+          {t('vendorModules')}
         </p>
         <ul className="space-y-1">
           {navItems.map((item) => {
@@ -80,7 +92,7 @@ export default function BidderSidebar({ currentTab, onTabChange, onOpenNewBid, c
                   }`}
                 >
                   <item.icon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className="flex-1 text-left">{translatedLabels[item.id] || item.key}</span>
                 </button>
               </li>
             );
@@ -98,7 +110,7 @@ export default function BidderSidebar({ currentTab, onTabChange, onOpenNewBid, c
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-150"
               >
                 <item.icon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-                <span>{item.label}</span>
+                <span>{translatedLabels[item.id] || item.key}</span>
               </button>
             </li>
           ))}
@@ -108,7 +120,7 @@ export default function BidderSidebar({ currentTab, onTabChange, onOpenNewBid, c
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-red-500/20 hover:text-red-400 transition-all duration-150"
               >
                 <LogOut className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-                <span>Log Out</span>
+                <span>{t('logout')}</span>
             </button>
           </li>
         </ul>
@@ -121,8 +133,8 @@ export default function BidderSidebar({ currentTab, onTabChange, onOpenNewBid, c
             {currentUser?.full_name?.charAt(0) || 'U'}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{currentUser?.full_name || 'Vendor'}</p>
-            <p className="text-[11px] text-slate-400 truncate">{currentUser?.department || 'Vendor'}</p>
+            <p className="text-sm font-semibold text-white truncate">{currentUser?.full_name || t('vendor')}</p>
+            <p className="text-[11px] text-slate-400 truncate">{currentUser?.department || t('vendor')}</p>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@ import random
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -37,6 +37,7 @@ from app.providers.government.base import (
     MockESICProvider, MockMCAProvider, MockStartupProvider, MockNSICProvider,
     MockDigiLockerProvider, MockDebarmentProvider
 )
+from app.services.notifications.notification_service import notify_bid_event
 
 router = APIRouter(prefix="/bids", tags=["Bids"])
 
@@ -329,6 +330,13 @@ def execute_bid_verification_pipeline(bid_id: str, db: Session):
         bid_id=bid.id, vendor_name=vendor_name, status="pass" if risk_level != "HIGH" else "fail"
     )
 
+    notify_bid_event(
+        db,
+        bid,
+        "BID_FLAGGED" if risk_level == "HIGH" else "BID_STATUS_CHANGED",
+        event_id=f"verification:{bid.id}:{bid.risk_score}:{bid.compliance_score}",
+    )
+
     # Get the users who own this bid to generate persistent alerts
     bidder_users = db.query(User).filter(User.vendor_id == bid.vendor_id).all()
     for bidder_user in bidder_users:
@@ -408,6 +416,7 @@ def list_bids(
             docs.append({
                 "id": d.id,
                 "name": d.document_type,
+                "document_type": d.document_type,
                 "status": d.document_status.lower(),
                 "source": d.source or "Uploaded Document",
                 "detail": d.detail or f"{d.filename} processed."
@@ -441,7 +450,15 @@ def list_bids(
             "documents": docs,
             "audit_trail": audit_entries,
             "officer": b.reviewed_by,
-            "tender_title": b.tender.title if b.tender else ""
+            "tender_title": b.tender.title if b.tender else "",
+            "requirements": [
+                {
+                    "document_type": requirement.document_type,
+                    "is_mandatory": requirement.is_mandatory,
+                    "description": requirement.description,
+                }
+                for requirement in (b.tender.requirements if b.tender else [])
+            ],
         })
 
     return results
@@ -563,16 +580,7 @@ def create_bid(
         bid_id=bid.id, user_id=current_user.id, vendor_name=vendor.name, status="pass"
     )
 
-    # Notification Trigger
-    notification = Notification(
-        user_id=current_user.id,
-        title="Bid Submitted",
-        message=f"Bid {bid_code} has been successfully submitted.",
-        notification_type="INFO",
-        related_entity_id=bid.id
-    )
-    db.add(notification)
-    db.commit()
+    notify_bid_event(db, bid, "BID_PLACED", event_id=bid.bid_id)
 
     return {
         "id": bid.bid_id,
@@ -596,6 +604,7 @@ def create_bid(
 def upload_document(
     bid_id_or_code: str,
     file: UploadFile = File(...),
+    document_type: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -608,6 +617,19 @@ def upload_document(
 
     if bid.vendor_id != current_user.vendor_id:
         raise HTTPException(status_code=403, detail="Not authorized to upload to this bid")
+
+    if document_type:
+        allowed_types = {
+            requirement.document_type.strip().upper()
+            for requirement in (bid.tender.requirements if bid.tender else [])
+            if requirement.document_type
+        }
+        normalized_document_type = document_type.strip().upper()
+        if allowed_types and normalized_document_type not in allowed_types:
+            raise HTTPException(
+                status_code=400,
+                detail="Document type is not required for the selected tender.",
+            )
 
     # AUDIT ITEM 13: File validation (extension and size)
     ext = os.path.splitext(file.filename)[1].lower()
@@ -663,7 +685,10 @@ def upload_document(
 
     # Run OCR & Extraction
     extracted_text, ocr_conf = OCRService.process_file(save_path)
-    doc_type, class_conf = DocumentClassifier.classify(safe_filename, extracted_text)
+    classified_doc_type, class_conf = DocumentClassifier.classify(safe_filename, extracted_text)
+    doc_type = (document_type or classified_doc_type).strip().upper()
+    if not doc_type:
+        raise HTTPException(status_code=400, detail="Document type is required.")
     extracted_fields = FieldExtractor.extract_fields(doc_type, extracted_text)
     extracted_map = {field["field_name"]: field["field_value"] for field in extracted_fields}
     consistency_issues = []
@@ -754,6 +779,8 @@ def upload_document(
         )
         db.add(db_field)
     db.commit()
+
+    notify_bid_event(db, bid, "BID_UPDATED", event_id=f"document:{doc.id}")
 
     AuditLogger.log_event(
         db, "DOCUMENT_UPLOADED", "Document Pipeline", f"Uploaded & classified document '{safe_filename}' as {doc_type}",

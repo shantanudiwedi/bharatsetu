@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.models import Bid, ReviewDecision, User, Notification
+from app.models.models import Bid, ReviewDecision, User
 from app.schemas.schemas import ReviewDecisionCreate
 from app.services.audit.audit_logger import AuditLogger
 from app.core.security import get_current_user, require_roles
+from app.services.notifications.notification_service import notify_bid_event
 
 router = APIRouter(prefix="/bids", tags=["Review Decisions"])
 
@@ -31,17 +32,8 @@ def approve_bid(
     )
     db.add(decision)
     
-    # Notification Trigger
-    notification = Notification(
-        user_id=current_user.id,
-        title="Bid Approved",
-        message=f"Bid {bid.bid_id} has been approved.",
-        notification_type="SUCCESS",
-        related_entity_id=bid.id
-    )
-    db.add(notification)
-    
     db.commit()
+    notify_bid_event(db, bid, "BID_APPROVED", reason=payload.reason)
 
     AuditLogger.log_event(
         db, "BID_APPROVED", "Procurement Officer", f"Bid APPROVED by officer {current_user.full_name}",
@@ -76,17 +68,8 @@ def reject_bid(
     )
     db.add(decision)
 
-    # Notification Trigger
-    notification = Notification(
-        user_id=current_user.id,
-        title="Bid Rejected",
-        message=f"Bid {bid.bid_id} has been rejected: {payload.reason}",
-        notification_type="ERROR",
-        related_entity_id=bid.id
-    )
-    db.add(notification)
-
     db.commit()
+    notify_bid_event(db, bid, "BID_REJECTED", reason=payload.reason)
 
     AuditLogger.log_event(
         db, "BID_REJECTED", "Procurement Officer", f"Bid REJECTED by officer {current_user.full_name}: {payload.reason}",
@@ -121,17 +104,8 @@ def escalate_bid(
     )
     db.add(decision)
 
-    # Notification Trigger
-    notification = Notification(
-        user_id=current_user.id,
-        title="Bid Escalated",
-        message=f"Bid {bid.bid_id} escalated for senior review.",
-        notification_type="WARNING",
-        related_entity_id=bid.id
-    )
-    db.add(notification)
-
     db.commit()
+    notify_bid_event(db, bid, "BID_FLAGGED", reason=payload.reason, event_id=f"escalation:{bid.id}")
 
     AuditLogger.log_event(
         db, "BID_ESCALATED", "Procurement Officer", f"Bid ESCALATED for senior review by {current_user.full_name}: {payload.reason}",

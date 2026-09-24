@@ -59,9 +59,14 @@ def download_bid_report(bid_id_or_code: str, db: Session = Depends(get_db), curr
     }
 
     pdf_bytes = PDFReportGenerator.generate_bid_report(bid_dict)
+    if not pdf_bytes.startswith(b"%PDF-") or len(pdf_bytes) == 0:
+        raise HTTPException(status_code=500, detail="Report generation did not produce a valid PDF")
     filename = f"BharatSetu_Compliance_Report_{bid.bid_id}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        }
     )

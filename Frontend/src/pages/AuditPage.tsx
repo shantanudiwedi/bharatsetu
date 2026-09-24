@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { History, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
 import { fetchAuditEvents } from '@/services/api';
+import { translateAuditAction, translateAuditSource, useTranslation } from '@/i18n';
 
 export default function AuditPage({ searchTerm = '' }: { searchTerm?: string }) {
+  const { t } = useTranslation();
   const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
@@ -41,14 +43,14 @@ export default function AuditPage({ searchTerm = '' }: { searchTerm?: string }) 
             .map((e) => (
             <div key={e.id} className="grid grid-cols-[120px_1.5fr_2fr_1.5fr_100px] px-6 py-3.5 items-center text-xs">
               <div className="font-mono text-slate-400">{e.timestamp}</div>
-              <div className="font-semibold text-slate-700">{e.source}</div>
-              <div className="text-slate-600">{e.action || e.label}</div>
+              <div className="font-semibold text-slate-700">{translateAuditSource(e.source, t)}</div>
+              <div className="text-slate-600">{translateAuditAction(e.action || e.label, t)}</div>
               <div className="font-medium text-slate-800">{e.vendor || 'System'}</div>
               <div>
                 <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${
                   e.status === 'pass' ? 'bg-emerald-50 text-emerald-600' : e.status === 'fail' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'
                 }`}>
-                  {e.status.toUpperCase()}
+                  {e.status === 'pass' ? t('pass') : e.status === 'fail' ? t('fail') : t('checking')}
                 </span>
               </div>
             </div>

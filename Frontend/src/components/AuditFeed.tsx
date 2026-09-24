@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Activity, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
 import { fetchAuditEvents } from '@/services/api';
+import { translateAuditAction, translateAuditSource, useTranslation } from '@/i18n';
 
 const statusMap = {
-  pass: { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50', label: 'Pass' },
-  fail: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50', label: 'Fail' },
-  checking: { icon: Clock3, color: 'text-amber-500', bg: 'bg-amber-50', label: 'Checking' },
+  pass: { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  fail: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
+  checking: { icon: Clock3, color: 'text-amber-500', bg: 'bg-amber-50' },
 };
 
 export default function AuditFeed() {
+  const { t } = useTranslation();
   const [feed, setFeed] = useState<any[]>([]);
 
   const loadFeed = () => {
@@ -34,13 +36,13 @@ export default function AuditFeed() {
             <Activity className="w-4 h-4 text-navy-600" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-800">Live Audit Feed</h3>
-            <p className="text-[11px] text-slate-400">Real-time system checks</p>
+            <h3 className="text-sm font-bold text-slate-800">{t('liveAuditFeed')}</h3>
+            <p className="text-[11px] text-slate-400">{t('realTimeChecks')}</p>
           </div>
         </div>
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse-dot"></span>
-          Live
+          {t('live')}
         </span>
       </div>
 
@@ -52,7 +54,7 @@ export default function AuditFeed() {
 
           <div className="py-2">
             {feed.length === 0 ? (
-              <div className="px-5 py-8 text-sm text-slate-500">No audit events available.</div>
+              <div className="px-5 py-8 text-sm text-slate-500">{t('noAuditEvents')}</div>
             ) : (
               feed.map((entry, idx) => {
                 const s = statusMap[entry.status as keyof typeof statusMap] || statusMap.pass;
@@ -63,10 +65,10 @@ export default function AuditFeed() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[12px] font-semibold text-slate-700 truncate">{entry.source}</p>
+                        <p className="text-[12px] font-semibold text-slate-700 truncate">{translateAuditSource(entry.source, t)}</p>
                         <span className="text-[10px] text-slate-400 font-mono shrink-0">{entry.timestamp}</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-0.5 truncate">{entry.action || entry.label}</p>
+                      <p className="text-[11px] text-slate-500 leading-snug mt-0.5 truncate">{translateAuditAction(entry.action || entry.label, t)}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5 truncate">{entry.vendor}</p>
                     </div>
                   </div>
@@ -80,7 +82,7 @@ export default function AuditFeed() {
       {/* Footer */}
       <div className="px-5 py-3 border-t border-slate-200 bg-slate-50">
         <p className="text-[11px] text-slate-400 text-center">
-          Showing latest events · <span className="text-navy-600 font-semibold cursor-pointer hover:underline">View full audit trail</span>
+          {t('showingLatestEvents')} · <span className="text-navy-600 font-semibold cursor-pointer hover:underline">{t('viewFullAuditTrail')}</span>
         </p>
       </div>
     </div>

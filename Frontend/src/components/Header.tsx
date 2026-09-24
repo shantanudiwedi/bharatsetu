@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Bell, Calendar, ChevronDown, ShieldAlert, Check, CheckCircle2 } from 'lucide-react';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, fetchUnreadNotificationCount } from '@/services/api';
+import { LanguageSelector, translateNotification, useTranslation } from '@/i18n';
 
 interface HeaderProps {
   searchTerm?: string;
@@ -9,6 +10,7 @@ interface HeaderProps {
 }
 
 export default function Header({ searchTerm = '', onSearchChange, currentUser }: HeaderProps) {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -74,21 +76,22 @@ export default function Header({ searchTerm = '', onSearchChange, currentUser }:
     <header className="bg-white border-b border-slate-200 px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-20">
       <div>
         <div className="flex items-center gap-2 text-[12px] text-slate-400 font-medium mb-1">
-          <span>Verification Engine</span>
+          <span>{t('verificationEngine')}</span>
           <span className="text-slate-300">/</span>
-          <span className="text-navy-700">Procurement Operations</span>
+          <span className="text-navy-700">{t('procurementOperations')}</span>
         </div>
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Bid Verification Dashboard</h2>
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">{currentUser?.role === 'BIDDER' ? t('dashboard') : t('bidVerificationDashboard')}</h2>
           {/* SIMULATED GOVT VERIFICATION BANNER */}
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold">
             <ShieldAlert className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            SIMULATED GOVERNMENT VERIFICATION
+            {t('simulatedGovernmentVerification')}
           </span>
         </div>
       </div>
 
       <div className="flex items-center gap-4">
+        <LanguageSelector />
         {/* Search */}
         <div className="relative hidden md:block">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -96,7 +99,7 @@ export default function Header({ searchTerm = '', onSearchChange, currentUser }:
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-            placeholder="Search vendor, bid ID, GSTIN..."
+            placeholder={`${t('vendor')}, bid ID, GSTIN...`}
             className="w-64 pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent transition-all"
           />
         </div>
@@ -128,20 +131,20 @@ export default function Header({ searchTerm = '', onSearchChange, currentUser }:
           {showDropdown && (
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                <h3 className="font-bold text-slate-800 text-sm">{t('notifications')}</h3>
                 {unreadCount > 0 && (
                   <button 
                     onClick={handleMarkAllRead}
                     className="text-[11px] font-medium text-navy-600 hover:text-navy-700 hover:underline"
                   >
-                    Mark all read
+                    {t('markAllRead')}
                   </button>
                 )}
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="px-4 py-8 text-center text-sm text-slate-500">
-                    No notifications
+                    {t('noNotifications')}
                   </div>
                 ) : (
                   notifications.map((n) => (
@@ -151,18 +154,18 @@ export default function Header({ searchTerm = '', onSearchChange, currentUser }:
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-semibold text-slate-800 truncate">{n.title}</p>
+                                <p className="text-sm font-semibold text-slate-800 truncate">{translateNotification(n, t).title}</p>
                           <span className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
                             {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 leading-snug">{n.message}</p>
+                        <p className="text-xs text-slate-600 leading-snug">{translateNotification(n, t).message}</p>
                       </div>
                       {!n.is_read && (
                         <button 
                           onClick={() => handleMarkRead(n.id)}
                           className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-navy-600 transition-colors"
-                          title="Mark as read"
+                          title={t('markAsRead')}
                         >
                           <Check className="w-3.5 h-3.5" />
                         </button>

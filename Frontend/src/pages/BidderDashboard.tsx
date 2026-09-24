@@ -12,10 +12,12 @@ import {
   Info, 
   ChevronRight,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Upload
 } from 'lucide-react';
 import { api } from '@/services/api';
 import { formatINR } from '@/utils/formatINR';
+import { useTranslation } from '@/i18n';
 
 interface SuggestedTender {
   tender_id: string;
@@ -64,11 +66,13 @@ interface BidderDashboardProps {
 }
 
 export default function BidderDashboard({ currentUser, onNavigate, onOpenTender }: BidderDashboardProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
   const [suggestedTenders, setSuggestedTenders] = useState<SuggestedTender[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterActionOnly, setFilterActionOnly] = useState(false);
+  const [openExplanation, setOpenExplanation] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -101,7 +105,7 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
       <div className="p-8 flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="w-8 h-8 text-navy-600 animate-spin" />
-          <p className="text-sm font-medium text-slate-500">Loading compliance data and suggested tenders...</p>
+          <p className="text-sm font-medium text-slate-500">{t('checkingDocuments')}...</p>
         </div>
       </div>
     );
@@ -110,7 +114,7 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
   if (error) {
     return (
       <div className="p-8 bg-red-50 border border-red-200 rounded-xl text-red-700 m-6">
-        <p className="font-bold mb-1">Dashboard Error</p>
+        <p className="font-bold mb-1">{t('dashboard')} Error</p>
         <p className="text-sm">{error}</p>
         <button 
           onClick={loadData}
@@ -127,6 +131,14 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
   const totalDocs = data?.total_documents ?? 0;
   const actionRequiredCount = data?.action_required ?? 0;
   const actionItems = data?.action_items || [];
+  const nextStepFor = (item: ActionItem) => {
+    const result = `${item.issue} ${item.reason}`.toLowerCase();
+    if (result.includes('missing')) return 'Upload the required document before submitting the bid.';
+    if (result.includes('expir')) return 'Upload a current version of this document.';
+    if (result.includes('mismatch') || result.includes('match')) return 'Check whether the information in the submitted documents matches.';
+    if (result.includes('unavailable') || result.includes('mock')) return 'The verification source is currently unavailable. This does not automatically mean the document is invalid.';
+    return item.action;
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -135,14 +147,34 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-              Welcome back, {displayName}
+              {t('welcomeBack')}, {displayName}
             </h1>
             <span className="text-[10px] font-bold bg-navy-50 text-navy-700 border border-navy-200 px-2 py-0.5 rounded-full">
               GeM BIDDER PORTAL
             </span>
           </div>
+
+          <section aria-label="Bidder self-check steps" className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div className="flex flex-col md:flex-row gap-3">
+              {[t('step1'), t('step2'), t('step3')].map((step, index) => (
+                <div key={step} className="flex-1 flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 p-4">
+                  <span className="w-9 h-9 rounded-full bg-navy-700 text-white flex items-center justify-center font-bold">{index + 1}</span>
+                  <span className="text-sm font-semibold text-slate-700">{step}</span>
+                  {index < 2 && <ChevronRight className="hidden md:block ml-auto text-slate-300" />}
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-slate-500 mt-4">{t('uploadInstruction')}</p>
+            <button
+              onClick={() => onNavigate?.('bids')}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-navy-700 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-navy-800"
+            >
+              <Upload className="w-4 h-4" />
+              {t('uploadDocuments')}
+            </button>
+          </section>
           <p className="text-sm text-slate-500 mt-1">
-            Here's your current bidding and compliance readiness.
+            {t('biddingReadiness')}
           </p>
         </div>
 
@@ -151,7 +183,7 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
             onClick={() => onNavigate?.('tenders')}
             className="px-4 py-2 bg-navy-700 hover:bg-navy-800 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5"
           >
-            Explore Active Tenders
+            {t('exploreActiveTenders')}
             <ArrowUpRight className="w-4 h-4" />
           </button>
         </div>
@@ -168,12 +200,12 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
             <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
               <LayoutDashboard className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-semibold text-slate-400">Total: {data?.active_bids ?? 0}</span>
+            <span className="text-[11px] font-semibold text-slate-400">{t('total')}: {data?.active_bids ?? 0}</span>
           </div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Bids</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('activeBids')}</p>
           <p className="text-2xl font-extrabold text-slate-800 mt-1">{data?.active_bids ?? 0}</p>
           <p className="text-[11px] text-slate-400 mt-2">
-            {data?.pending_bids ?? 0} pending officer review
+            {data?.pending_bids ?? 0} {t('pendingOfficerReview')}
           </p>
         </div>
 
@@ -184,12 +216,12 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
               <TrendingUp className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
-              {complianceScore >= 80 ? 'HIGH' : complianceScore >= 50 ? 'MEDIUM' : 'LOW'}
+              {complianceScore >= 80 ? t('high') : complianceScore >= 50 ? t('medium') : t('low')}
             </span>
           </div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Compliance Score</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('complianceScore')}</p>
           <p className="text-2xl font-extrabold text-slate-800 mt-1">{complianceScore.toFixed(1)}%</p>
-          <p className="text-[11px] text-slate-400 mt-2">Deterministic rules calculation</p>
+          <p className="text-[11px] text-slate-400 mt-2">{t('deterministicRulesCalculation')}</p>
         </div>
 
         {/* Verified Documents */}
@@ -205,12 +237,12 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
               {totalDocs > 0 ? `${Math.round((verifiedCount / totalDocs) * 100)}%` : '0%'}
             </span>
           </div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verified Documents</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('verifiedDocuments')}</p>
           <p className="text-2xl font-extrabold text-slate-800 mt-1">
             {verifiedCount} <span className="text-sm font-normal text-slate-400">/ {totalDocs}</span>
           </p>
           <p className="text-[11px] text-slate-400 mt-2">
-            Exact SHA-256 traceable docs
+            {t('exactTraceableDocuments')}
           </p>
         </div>
 
@@ -231,14 +263,14 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
             </div>
             {actionRequiredCount > 0 && (
               <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded animate-pulse">
-                ACTION NEEDED
+                {t('actionNeeded')}
               </span>
             )}
           </div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Action Required</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('actionRequired')}</p>
           <p className="text-2xl font-extrabold text-slate-800 mt-1">{actionRequiredCount}</p>
           <p className="text-[11px] text-slate-500 mt-2">
-            {actionRequiredCount > 0 ? 'Click to inspect & remediate' : 'All requirements satisfied'}
+            {actionRequiredCount > 0 ? t('clickToInspect') : t('allRequirementsSatisfied')}
           </p>
         </div>
       </div>
@@ -249,14 +281,14 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
           <div>
             <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-navy-600" />
-              Compliance Overview & Readiness
+              {t('complianceOverview')}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Automated deterministic verification against tender eligibility standards and registry cross-checks.
+              {t('automatedVerificationDescription')}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">Readiness Status:</span>
+            <span className="text-xs font-semibold text-slate-500">{t('readinessStatus')}:</span>
             <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
               complianceScore >= 80 
                 ? 'bg-emerald-100 text-emerald-800' 
@@ -264,7 +296,7 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
                   ? 'bg-amber-100 text-amber-800' 
                   : 'bg-rose-100 text-rose-800'
             }`}>
-              {complianceScore >= 80 ? 'Strong Readiness' : complianceScore >= 50 ? 'Good Standing' : 'Action Needed'}
+              {complianceScore >= 80 ? t('strongReadiness') : complianceScore >= 50 ? t('goodStanding') : t('actionRequired')}
             </span>
           </div>
         </div>
@@ -287,7 +319,7 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <div>
-              <p className="text-xs text-slate-400 font-medium">Compliance Rate</p>
+              <p className="text-xs text-slate-400 font-medium">{t('complianceRate')}</p>
               <p className="text-sm font-bold text-slate-800">{complianceScore.toFixed(1)}%</p>
             </div>
           </div>
@@ -295,16 +327,16 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
             <div>
-              <p className="text-xs text-slate-400 font-medium">Verified Documents</p>
-              <p className="text-sm font-bold text-slate-800">{verifiedCount} of {totalDocs} Documents</p>
+              <p className="text-xs text-slate-400 font-medium">{t('verifiedDocuments')}</p>
+              <p className="text-sm font-bold text-slate-800">{verifiedCount} / {totalDocs} {t('documents')}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
             <div>
-              <p className="text-xs text-slate-400 font-medium">Pending Remediations</p>
-              <p className="text-sm font-bold text-slate-800">{actionRequiredCount} Issues Flagged</p>
+              <p className="text-xs text-slate-400 font-medium">{t('pendingRemediations')}</p>
+              <p className="text-sm font-bold text-slate-800">{actionRequiredCount} {t('issuesFlagged')}</p>
             </div>
           </div>
         </div>
@@ -317,11 +349,11 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-700" />
               <h3 className="font-bold text-amber-950 text-sm">
-                Remediation Items ({actionItems.length})
+                {t('remediationItems')} ({actionItems.length})
               </h3>
             </div>
             <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full">
-              Detect → Explain → Fix → Reverify
+              {t('detectExplainFixReverify')}
             </span>
           </div>
 
@@ -335,12 +367,33 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
                       Req: {item.requirement}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    <span className="font-semibold text-slate-700">Reason:</span> {item.reason}
-                  </p>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <button
+                      onClick={() => setOpenExplanation(openExplanation === `why-${idx}` ? null : `why-${idx}`)}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      {t('why')}
+                    </button>
+                    <button
+                      onClick={() => setOpenExplanation(openExplanation === `do-${idx}` ? null : `do-${idx}`)}
+                      className="rounded-lg border border-navy-200 bg-navy-50 px-3 py-1.5 text-xs font-semibold text-navy-700 hover:bg-navy-100"
+                    >
+                      {t('whatShouldIDo')}
+                    </button>
+                  </div>
+                  {openExplanation === `why-${idx}` && (
+                    <p className="mt-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                      <span className="font-semibold text-slate-700">{t('why')} </span>{item.reason}
+                    </p>
+                  )}
+                  {openExplanation === `do-${idx}` && (
+                    <p className="mt-2 rounded-lg bg-navy-50 p-3 text-xs text-navy-800">
+                      <span className="font-semibold">{t('whatShouldIDo')} </span>{nextStepFor(item)}
+                    </p>
+                  )}
                   {item.document_name && (
                     <p className="text-[11px] text-slate-400">
-                      Target File: <span className="font-mono text-slate-600">{item.document_name}</span>
+                      {t('targetFile')}: <span className="font-mono text-slate-600">{item.document_name}</span>
                     </p>
                   )}
                 </div>
@@ -365,20 +418,20 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              Suggested Tenders For You
+              {t('suggestedTenders')}
               <span className="text-xs font-medium text-slate-400">
-                (Excludes bids below ₹1,00,000)
+                {t('excludesBelowThreshold')}
               </span>
             </h3>
             <p className="text-xs text-slate-500">
-              AI & deterministic matching based exclusively on your currently verified documents.
+              {t('matchingBasedOnDocuments')}
             </p>
           </div>
           <button
             onClick={() => onNavigate?.('tenders')}
             className="text-xs font-bold text-navy-600 hover:text-navy-800 flex items-center gap-1"
           >
-            View All Tenders
+            {t('viewAllTenders')}
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -386,15 +439,15 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
         {suggestedTenders.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center">
             <Building className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-slate-700 mb-1">No Matching Tenders Found</h4>
+            <h4 className="text-sm font-bold text-slate-700 mb-1">{t('noMatchingTenders')}</h4>
             <p className="text-xs text-slate-400 max-w-md mx-auto mb-4">
-              All listed tenders meet the GeM minimum procurement threshold (₹1,00,000). Upload and verify more documents to increase your eligibility match.
+              {t('uploadVerifyMore')}
             </p>
             <button
               onClick={() => onNavigate?.('tenders')}
               className="px-4 py-2 bg-navy-700 text-white text-xs font-bold rounded-lg hover:bg-navy-800"
             >
-              Browse Active Tenders
+              {t('browseActiveTenders')}
             </button>
           </div>
         ) : (
@@ -420,7 +473,7 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
                       </span>
                       <div className="flex items-center gap-1 text-xs font-extrabold text-navy-800 bg-navy-50 px-2 py-0.5 rounded">
                         <span>{tender.match_score}%</span>
-                        <span className="text-[10px] text-slate-400 font-normal">Match</span>
+                        <span className="text-[10px] text-slate-400 font-normal">{t('match')}</span>
                       </div>
                     </div>
 
@@ -440,13 +493,13 @@ export default function BidderDashboard({ currentUser, onNavigate, onOpenTender 
                     {/* Tender Value & Deadline */}
                     <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 rounded-xl text-xs">
                       <div>
-                        <p className="text-[10px] text-slate-400 font-semibold uppercase">Estimated Value</p>
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase">{t('estimatedValue')}</p>
                         <p className="font-bold text-slate-800 mt-0.5">
                           {formatCurrency(tender.tender_value)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-semibold uppercase">Closing Date</p>
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase">{t('closingDate')}</p>
                         <p className="font-bold text-slate-800 mt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3 text-slate-400" />
                           {tender.closing_date}

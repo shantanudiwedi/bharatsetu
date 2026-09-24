@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
 import { ShieldAlert, AlertTriangle, Info } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 export default function BidderAlertsPage() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get('/bidder/alerts')
@@ -13,16 +15,16 @@ export default function BidderAlertsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="p-6">Loading alerts...</div>;
+  if (loading) return <div className="p-6">{t('loadingAlerts')}</div>;
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold text-slate-800 mb-6">Smart Compliance Alerts</h2>
+      <h2 className="text-xl font-bold text-slate-800 mb-6">{t('smartComplianceAlerts')}</h2>
       
       {alerts.length === 0 ? (
         <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-xl flex items-center gap-3">
           <Info className="text-emerald-600 w-6 h-6" />
-          <p className="text-emerald-800 font-medium">All documents are compliant. No alerts generated.</p>
+          <p className="text-emerald-800 font-medium">{t('allDocumentsCompliant')}</p>
         </div>
       ) : (
         <div className="space-y-4">

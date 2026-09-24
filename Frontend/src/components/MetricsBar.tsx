@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ClipboardList, CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchDashboardMetrics, DashboardMetrics } from '@/services/api';
+import { useTranslation } from '@/i18n';
 
 const colorMap: Record<string, { bg: string; text: string; ring: string }> = {
   navy: { bg: 'bg-navy-50', text: 'text-navy-700', ring: 'ring-navy-100' },
@@ -10,6 +11,7 @@ const colorMap: Record<string, { bg: string; text: string; ring: string }> = {
 };
 
 export default function MetricsBar() {
+  const { t } = useTranslation();
   const [data, setData] = useState<DashboardMetrics | null>(null);
 
   useEffect(() => {
@@ -23,33 +25,33 @@ export default function MetricsBar() {
   const metrics = data
     ? [
         {
-          label: 'Pending Review',
+          label: t('pendingReview'),
           value: String(data.pending_review_count),
-          sub: 'Awaiting officer decision',
+          sub: t('awaitingOfficerDecision'),
           icon: ClipboardList,
           color: 'navy',
           trend: null,
         },
         {
-          label: 'Approved Bids',
+          label: t('approvedBids'),
           value: String(data.approved_today_count),
-          sub: 'Compliance verified',
+          sub: t('complianceVerified'),
           icon: CheckCircle2,
           color: 'emerald',
           trend: { dir: 'up', val: '+3' },
         },
         {
-          label: 'Avg. Verification Time',
+          label: t('averageVerificationTime'),
           value: data.avg_verification_time,
-          sub: 'End-to-end processing',
+          sub: t('endToEndProcessing'),
           icon: Clock,
           color: 'amber',
           trend: { dir: 'down', val: '-8s' },
         },
         {
-          label: 'Flagged Cases',
+          label: t('flaggedCases'),
           value: String(data.flagged_cases_count),
-          sub: 'Require escalation',
+          sub: t('requireEscalation'),
           icon: AlertTriangle,
           color: 'red',
           trend: null,
@@ -60,7 +62,7 @@ export default function MetricsBar() {
   if (!data) {
     return (
       <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Dashboard metrics are currently unavailable because the API is not responding.
+        {t('metricsUnavailable')}
       </div>
     );
   }

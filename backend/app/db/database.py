@@ -52,6 +52,18 @@ def run_migrations():
                 "ALTER TABLE rule_results ADD COLUMN verification_id TEXT REFERENCES verifications(id)"
             ))
             conn.commit()
+        n_cols = conn.execute(text("PRAGMA table_info(notifications)")).fetchall()
+        n_col_names = [c[1] for c in n_cols]
+        notification_columns = {
+            "channel": "TEXT NOT NULL DEFAULT 'IN_APP'",
+            "delivery_status": "TEXT NOT NULL DEFAULT 'SENT'",
+            "provider_reference": "TEXT",
+            "failure_reason": "TEXT",
+        }
+        for name, definition in notification_columns.items():
+            if n_cols and name not in n_col_names:
+                conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {name} {definition}"))
+                conn.commit()
 
 try:
     run_migrations()

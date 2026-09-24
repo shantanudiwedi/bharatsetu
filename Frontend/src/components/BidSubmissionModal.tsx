@@ -1,12 +1,25 @@
-import { useEffect, useState } from 'react';
-import { X, Upload, Building, FileText, CheckCircle2 } from 'lucide-react';
-import { createBidApi, uploadBidDocument, triggerBidVerification } from '@/services/api';
+import { useEffect, useRef, useState } from 'react';
+import { X, Building, CheckCircle2, Circle } from 'lucide-react';
+import { createBidApi, fetchTenders, uploadBidDocument, triggerBidVerification } from '@/services/api';
+import { useTranslation } from '@/i18n';
 
 interface BidSubmissionModalProps {
   isOpen: boolean;
   selectedTender?: any | null;
   onClose: () => void;
   onSuccess: () => void;
+}
+
+interface SelectedDocument {
+  file: File;
+  status: 'selected';
+}
+
+interface TenderRequirement {
+  id?: string;
+  document_type: string;
+  is_mandatory?: boolean;
+  description?: string;
 }
 
 export default function BidSubmissionModal({ isOpen, selectedTender, onClose, onSuccess }: BidSubmissionModalProps) {
@@ -16,13 +29,93 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
   const [gstin, setGstin] = useState('');
   const [pan, setPan] = useState('');
   const [udyam, setUdyam] = useState('');
-  const [files, setFiles] = useState<File[]>([]);
+  const [selectedDocuments, setSelectedDocuments] = useState<Record<string, SelectedDocument>>({});
   const [submitting, setSubmitting] = useState(false);
   const [progressStep, setProgressStep] = useState<string>('');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoriesFailed, setCategoriesFailed] = useState(false);
+  const [tenderRequirements, setTenderRequirements] = useState<TenderRequirement[]>([]);
+  const [resolvedTender, setResolvedTender] = useState<any | null>(null);
+  const [tenderLoading, setTenderLoading] = useState(false);
+  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+  const { t } = useTranslation();
+  const requirements: TenderRequirement[] = tenderRequirements
+    .filter((requirement: TenderRequirement) => requirement?.document_type)
+    .map((requirement: TenderRequirement) => ({
+      ...requirement,
+      document_type: requirement.document_type.trim().toUpperCase(),
+    }));
+
+  const documentLabel = (documentType: string) => {
+    const labels: Record<string, string> = {
+      PAN: 'PAN',
+      GST: 'GST Registration',
+      UDYAM: 'Udyam / MSME Registration',
+      EPFO: 'EPFO',
+      ESIC: 'ESIC',
+      ITR: 'ITR / Financial Document',
+      FINANCIAL: 'ITR / Financial Document',
+      EXPERIENCE: 'Experience Certificate',
+    };
+    return labels[documentType] || documentType.replace(/_/g, ' ');
+  };
 
   useEffect(() => {
+    setResolvedTender(selectedTender || null);
     setCategory(selectedTender?.category || '');
+    setSelectedDocuments({});
+    fileInputs.current = {};
+    setTenderRequirements([]);
   }, [selectedTender]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedTender) return;
+    let cancelled = false;
+    setTenderLoading(true);
+    setCategoriesLoading(true);
+    setCategoriesFailed(false);
+    fetchTenders()
+      .then((tenders) => {
+        if (cancelled) return;
+      const selectedTenderKeys = [
+        selectedTender.id,
+        selectedTender.tender_id,
+        selectedTender.tenderReference,
+      ].filter(Boolean).map(String);
+      const matchedTender = tenders.find((tender: any) =>
+        selectedTenderKeys.includes(String(tender.id))
+        || selectedTenderKeys.includes(String(tender.tender_id))
+      );
+      const tender = matchedTender || selectedTender;
+      setResolvedTender(tender);
+      setCategory(tender.category || '');
+      setTenderRequirements(tender.requirements || []);
+      setCategories(Array.from(new Set(
+          tenders
+            .map((tender: any) => String(tender.category || '').trim())
+            .filter(Boolean)
+        )));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setResolvedTender(selectedTender);
+          setCategory(selectedTender.category || '');
+          setTenderRequirements(selectedTender.requirements || []);
+          setCategories([]);
+          setCategoriesFailed(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCategoriesLoading(false);
+          setTenderLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, selectedTender]);
 
   if (!isOpen) return null;
 
@@ -31,7 +124,10 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
     if (name.length < 2 || name.length > 150 || !/[A-Za-z0-9]/.test(name) || !/^[A-Za-z0-9\s&.,'()\-]+$/.test(name)) {
       return 'Enter a valid vendor/entity name.';
     }
-    if (!category || (selectedTender?.category || '').toLowerCase() !== category.toLowerCase()) {
+    if (tenderLoading) {
+      return 'Loading tender requirements...';
+    }
+    if (!category || (resolvedTender?.category || '').toLowerCase() !== category.toLowerCase()) {
       return 'Select the category configured for this tender.';
     }
     const amount = Number(bidAmount.replace(/[₹,\s]/g, ''));
@@ -52,6 +148,12 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
     if (udyam && !/^UDYAM-[A-Z]{2}-[0-9]{2}-[0-9]{7}$/.test(udyam.trim().toUpperCase())) {
       return 'Invalid Udyam number. Expected UDYAM-XX-00-0000000.';
     }
+    const missingRequirement = requirements.find(
+      (requirement) => requirement.is_mandatory !== false && !selectedDocuments[requirement.document_type]
+    );
+    if (missingRequirement) {
+      return `Required document missing: ${documentLabel(missingRequirement.document_type)}`;
+    }
     return null;
   };
   const validationError = validate();
@@ -66,10 +168,10 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
     setSubmitting(true);
     try {
       setProgressStep('Creating Bid Entry in Database...');
-      if (!selectedTender?.id && !selectedTender?.tender_id && !selectedTender?.tenderReference) {
+      if (!resolvedTender?.id && !resolvedTender?.tender_id && !resolvedTender?.tenderReference) {
         throw new Error('Select a tender before submitting a bid.');
       }
-      const tenderId = selectedTender.tender_id || selectedTender.id || selectedTender.tenderReference;
+      const tenderId = resolvedTender.tender_id || resolvedTender.id || resolvedTender.tenderReference;
       const bid = await createBidApi({
         tender_id: tenderId,
         vendor_name: vendorName.trim().replace(/\s+/g, ' '),
@@ -80,10 +182,12 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
         udyam: udyam.toUpperCase()
       });
 
-      if (files.length > 0) {
-        for (let i = 0; i < files.length; i++) {
-          setProgressStep(`Uploading & Extracting Document ${i + 1}/${files.length}...`);
-          await uploadBidDocument(bid.id, files[i]);
+      const documentsToUpload = Object.entries(selectedDocuments);
+      if (documentsToUpload.length > 0) {
+        for (let i = 0; i < documentsToUpload.length; i++) {
+          const [documentType, selectedDocument] = documentsToUpload[i];
+          setProgressStep(`Uploading & Extracting Document ${i + 1}/${documentsToUpload.length}...`);
+          await uploadBidDocument(bid.id, selectedDocument.file, documentType);
         }
       }
 
@@ -118,7 +222,7 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-800">Submit New Vendor Bid</h3>
-            <p className="text-xs text-slate-500">Tender: {selectedTender ? `${selectedTender.title} (${selectedTender.tender_id || selectedTender.id || selectedTender.tenderReference || 'Selected tender'})` : 'Select a tender to continue'}</p>
+            <p className="text-xs text-slate-500">Tender: {resolvedTender ? `${resolvedTender.title} (${resolvedTender.tender_id || resolvedTender.id || resolvedTender.tenderReference || 'Selected tender'})` : 'Select a tender to continue'}</p>
           </div>
         </div>
 
@@ -140,11 +244,16 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Procurement Category</label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                disabled={Boolean(resolvedTender?.category)}
                 className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-navy-400"
               >
-                <option value="">Select tender category</option>
-                {selectedTender?.category && <option value={selectedTender.category}>{selectedTender.category}</option>}
+                <option value="">{categoriesLoading ? t('loadingCategories') : t('selectTenderCategory')}</option>
+                {(resolvedTender?.category ? [resolvedTender.category] : categories).map((categoryOption) => (
+                  <option key={categoryOption} value={categoryOption}>{categoryOption}</option>
+                ))}
+                {!categoriesLoading && (categoriesFailed || (!resolvedTender?.category && categories.length === 0)) && (
+                  <option value="" disabled>{t('noProcurementCategories')}</option>
+                )}
               </select>
             </div>
             <div>
@@ -193,27 +302,71 @@ export default function BidSubmissionModal({ isOpen, selectedTender, onClose, on
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Upload Compliance Documents</label>
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:bg-slate-50 transition-colors">
-              <Upload className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-              <p className="text-xs text-slate-600 font-medium">Drag & drop files or click to browse</p>
-              <p className="text-[11px] text-slate-400 mt-1">Supported: PDF, PNG, JPG (GST, PAN, Udyam, EPFO certificates)</p>
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={(e) => {
-                  if (e.target.files) {
-                    setFiles(Array.from(e.target.files));
-                  }
-                }}
-                className="mt-2 text-xs text-slate-500"
-              />
-            </div>
-            {files.length > 0 && (
-              <div className="mt-2 text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5" />
-                {files.length} document(s) selected
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Required Documents</label>
+            {tenderLoading && (
+              <p className="mt-2 text-xs text-slate-500">Loading tender requirements...</p>
+            )}
+            {!tenderLoading && requirements.length > 0 && (
+              <div className="mt-3 rounded-xl border border-slate-200 divide-y divide-slate-100">
+                <div className="px-3 py-2 flex items-center justify-between bg-slate-50">
+                  <span className="text-xs font-bold text-slate-700">Document checklist</span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    {Object.keys(selectedDocuments).length} / {requirements.length} uploaded
+                  </span>
+                </div>
+                {requirements.map((requirement) => {
+                  const documentType = requirement.document_type;
+                  const selectedDocument = selectedDocuments[documentType];
+                  return (
+                    <div key={requirement.id || documentType} className="px-3 py-3 flex items-center gap-3">
+                      {selectedDocument ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden="true" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-slate-300 shrink-0" aria-hidden="true" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-slate-700">{documentLabel(documentType)}</p>
+                          <span className={`text-[10px] font-bold uppercase ${requirement.is_mandatory === false ? 'text-slate-500' : 'text-amber-700'}`}>
+                            {requirement.is_mandatory === false ? 'Optional' : 'Required'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate">
+                          {selectedDocument ? `${selectedDocument.file.name} - Uploaded, Pending Verification` : 'Not uploaded'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => fileInputs.current[documentType]?.click()}
+                        className="shrink-0 px-3 py-1.5 text-xs font-semibold text-navy-700 bg-navy-50 rounded-lg hover:bg-navy-100"
+                      >
+                        {selectedDocument ? 'Replace' : `Choose ${documentLabel(documentType)} File`}
+                      </button>
+                      <input
+                        ref={(input) => {
+                          fileInputs.current[documentType] = input;
+                        }}
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (!file) return;
+                          setSelectedDocuments((current) => ({
+                            ...current,
+                            [documentType]: { file, status: 'selected' },
+                          }));
+                          event.currentTarget.value = '';
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {!tenderLoading && requirements.length === 0 && resolvedTender && (
+              <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                No document requirements are configured for this tender.
               </div>
             )}
           </div>

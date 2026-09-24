@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { ShieldCheck, Lock, Mail, ArrowRight, Building2, User as UserIcon, CreditCard, FileCheck } from 'lucide-react';
 import { loginApi, registerApi } from '@/services/api';
+import { LanguageSelector, useTranslation } from '@/i18n';
 
 interface LoginPageProps {
   onLoginSuccess: (user: any) => void;
 }
 
 export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   
   // Login form state
@@ -48,7 +50,14 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
       localStorage.setItem('user', JSON.stringify(data.user));
       onLoginSuccess(data.user);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Invalid credentials');
+      const detail = err?.response?.data?.detail;
+      setError(
+        !err?.response
+          ? t('backendUnavailable')
+          : detail === 'Incorrect email or password'
+            ? t('invalidCredentials')
+            : detail || t('invalidCredentials')
+      );
     } finally {
       setLoading(false);
     }
@@ -71,14 +80,17 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
       localStorage.setItem('user', JSON.stringify(data.user));
       onLoginSuccess(data.user);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Registration failed. Please check your information.');
+      setError(err?.response?.data?.detail || t('registrationFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative">
+      <div className="absolute right-5 top-5 rounded-lg bg-white/95 px-3 py-2 shadow">
+        <LanguageSelector />
+      </div>
       <div className="bg-white rounded-2xl max-w-lg w-full p-8 shadow-2xl border border-slate-200">
         <div className="flex items-center gap-3 mb-6 justify-center">
           <div className="w-12 h-12 rounded-xl bg-navy-600 flex items-center justify-center shadow-md">
@@ -101,7 +113,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Sign In
+            {t('signIn')}
           </button>
           <button
             type="button"
@@ -112,17 +124,17 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Register as Bidder
+            {t('registerAsBidder')}
           </button>
         </div>
 
         <h3 className="text-base font-bold text-slate-800 text-center mb-1">
-          {mode === 'login' ? 'Access Procurement Console' : 'New Bidder Self-Registration'}
+          {mode === 'login' ? t('accessProcurementConsole') : t('newBidderRegistration')}
         </h3>
         <p className="text-xs text-slate-400 text-center mb-6">
           {mode === 'login' 
-            ? 'Sign in as Procurement Officer, Admin, or Registered Bidder' 
-            : 'Create your verified vendor identity to participate in GeM tenders'}
+            ? t('signInAsRoles')
+            : t('createVendorIdentity')}
         </p>
 
         {error && (
@@ -134,7 +146,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         {mode === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('emailAddress')}</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -148,7 +160,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('password')}</label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -166,42 +178,47 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 py-3 bg-navy-700 hover:bg-navy-800 text-white rounded-lg text-sm font-bold shadow-md transition-all disabled:opacity-50"
             >
-              {loading ? 'Authenticating...' : 'Sign In to Console'}
+              {loading ? t('authenticating') : t('signInToConsole')}
               <ArrowRight className="w-4 h-4" />
             </button>
 
             {/* Quick Demo Credentials */}
             <div className="mt-4 pt-4 border-t border-slate-100">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center mb-2">Quick Demo Access</p>
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center mb-2">{t('quickDemoAccess')}</p>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setDemoCredentials('officer')}
                   className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold"
                 >
-                  Officer
+                  {t('officer')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDemoCredentials('bidder')}
                   className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold"
                 >
-                  Bidder
+                  {t('bidder')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDemoCredentials('admin')}
                   className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold"
                 >
-                  Admin
+                  {t('admin')}
                 </button>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] text-slate-500">
+                <span>{t('roleOfficer')}</span>
+                <span>{t('roleBidder')}</span>
+                <span>{t('roleAdmin')}</span>
               </div>
             </div>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Company / Entity Name *</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('companyEntityName')}</label>
               <div className="relative">
                 <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -216,7 +233,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Authorized Contact Full Name *</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('authorizedContactName')}</label>
               <div className="relative">
                 <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -232,7 +249,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">PAN Number</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('panNumber')}</label>
                 <div className="relative">
                   <CreditCard className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -246,7 +263,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">GSTIN Number</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('gstinNumber')}</label>
                 <div className="relative">
                   <FileCheck className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -262,7 +279,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Official Business Email *</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('officialBusinessEmail')}</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -277,7 +294,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Password * (min 6 characters)</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{t('passwordMinimum')}</label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -297,7 +314,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-md transition-all disabled:opacity-50 mt-2"
             >
-              {loading ? 'Registering Vendor...' : 'Create Bidder Account'}
+              {loading ? t('registeringVendor') : t('createBidderAccount')}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -306,4 +323,3 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     </div>
   );
 }
-

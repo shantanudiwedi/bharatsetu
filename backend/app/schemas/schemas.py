@@ -83,6 +83,7 @@ class VendorResponse(VendorCreate):
 class DocCheckSchema(BaseModel):
     id: str
     name: str
+    document_type: Optional[str] = None
     status: str # verified, failed, pending
     source: str
     detail: str
@@ -185,6 +186,7 @@ class BidResponse(BaseModel):
     audit_trail: List[AuditEntrySchema] = []
     officer: Optional[str] = None
     tender_title: Optional[str] = None
+    requirements: List[TenderRequirementBase] = []
 
     class Config:
         from_attributes = True

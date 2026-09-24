@@ -11,6 +11,7 @@ import {
   LogOut,
   PlusCircle
 } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 interface SidebarProps {
   currentTab: string;
@@ -35,6 +36,18 @@ const bottomItems = [
 ];
 
 export default function Sidebar({ currentTab, onTabChange, onOpenNewBid, currentUser }: SidebarProps) {
+  const { t } = useTranslation();
+  const labels: Record<string, string> = {
+    dashboard: t('dashboard'),
+    queue: t('verificationQueue'),
+    tenders: t('tenders'),
+    reviewed: t('reviewedBids'),
+    vendors: t('vendorRegistry'),
+    flagged: t('flaggedCases'),
+    audit: t('auditHistory'),
+    settings: t('settings'),
+    support: t('helpSupport'),
+  };
   return (
     <aside className="w-64 bg-navy-950 text-white flex flex-col h-screen sticky top-0 shrink-0">
       {/* Logo */}
@@ -45,7 +58,7 @@ export default function Sidebar({ currentTab, onTabChange, onOpenNewBid, current
           </div>
           <div>
             <h1 className="font-bold text-[15px] leading-tight tracking-tight">BharatSetu</h1>
-            <p className="text-[11px] text-navy-300 font-medium">CPCL Procurement Console</p>
+            <p className="text-[11px] text-navy-300 font-medium">{t('procurementOperations')}</p>
           </div>
         </div>
       </div>
@@ -53,7 +66,7 @@ export default function Sidebar({ currentTab, onTabChange, onOpenNewBid, current
       {/* Nav */}
       <nav className="flex-1 px-3 py-2 overflow-y-auto scrollbar-navy">
         <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-navy-400">
-          Procurement Modules
+          {t('procurementModules')}
         </p>
         <ul className="space-y-1">
           {navItems.map((item) => {
@@ -69,7 +82,7 @@ export default function Sidebar({ currentTab, onTabChange, onOpenNewBid, current
                   }`}
                 >
                   <item.icon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className="flex-1 text-left">{labels[item.id] || item.label}</span>
                   {item.badge && (
                     <span
                       className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
@@ -96,7 +109,7 @@ export default function Sidebar({ currentTab, onTabChange, onOpenNewBid, current
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-navy-200 hover:bg-navy-800 hover:text-white transition-all duration-150"
               >
                 <item.icon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-                <span>{item.label}</span>
+                <span>{labels[item.id] || item.label}</span>
               </button>
             </li>
           ))}
@@ -106,7 +119,7 @@ export default function Sidebar({ currentTab, onTabChange, onOpenNewBid, current
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-navy-200 hover:bg-red-500/20 hover:text-red-400 transition-all duration-150"
             >
               <LogOut className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-              <span>Log Out</span>
+              <span>{t('logout')}</span>
             </button>
           </li>
         </ul>

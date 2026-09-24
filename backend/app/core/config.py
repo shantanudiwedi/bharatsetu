@@ -52,6 +52,22 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
     OCR_ENABLED: bool = os.getenv("OCR_ENABLED", "true").lower() == "true"
 
+    # Optional notification channels. Bid persistence never depends on these.
+    EMAIL_NOTIFICATIONS_ENABLED: bool = os.getenv("EMAIL_NOTIFICATIONS_ENABLED", "false").lower() == "true"
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    NOTIFICATION_FROM_EMAIL: str = os.getenv("NOTIFICATION_FROM_EMAIL", "")
+    SMS_NOTIFICATIONS_ENABLED: bool = os.getenv("SMS_NOTIFICATIONS_ENABLED", "false").lower() == "true"
+    SMS_PROVIDER: str = os.getenv("SMS_PROVIDER", "mock")
+    TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
+    TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
+    TWILIO_FROM_NUMBER: str = os.getenv("TWILIO_FROM_NUMBER", "")
+    NOTIFICATION_TIME_ZONE: str = os.getenv("NOTIFICATION_TIME_ZONE", "UTC")
+    NOTIFICATION_ACTION_URL: str = os.getenv("NOTIFICATION_ACTION_URL", "")
+    DEADLINE_REMINDER_INTERVAL_SECONDS: int = int(os.getenv("DEADLINE_REMINDER_INTERVAL_SECONDS", "60"))
+
     class Config:
         case_sensitive = True
 

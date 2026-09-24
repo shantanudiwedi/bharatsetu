@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal, engine, Base
 from app.models.models import (
     User, Tender, TenderRequirement, Vendor, Bid, Document, ExtractedField,
-    Verification, RuleResult, CrossCheck, RiskAssessment, AuditEvent, DebarmentRecord
+    Verification, RuleResult, CrossCheck, RiskAssessment, AuditEvent, DebarmentRecord,
+    Notification
 )
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 from app.core.tender_rules import MIN_TENDER_VALUE_INR
 from app.services.audit.audit_logger import AuditLogger
 
@@ -17,6 +18,12 @@ from app.services.audit.audit_logger import AuditLogger
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
 _PROJECT_ROOT = _BACKEND_DIR.parent
 _UPLOAD_DIR = _PROJECT_ROOT / "uploads"
+
+
+def _ensure_demo_password(user: User, password: str) -> None:
+    """Repair only an invalid demo hash; preserve valid existing passwords."""
+    if not verify_password(password, user.hashed_password):
+        user.hashed_password = get_password_hash(password)
 
 
 def _make_valid_pdf(doc_type: str, vendor_name: str, gstin: str = "", pan: str = "", udyam: str = "") -> bytes:
@@ -108,6 +115,8 @@ def seed_db():
             department="CPCL Industrial Procurement Wing"
         )
         db.add(officer_user)
+    else:
+        _ensure_demo_password(officer_user, "officer123")
 
     admin_user = db.query(User).filter(User.email == "admin@bharatsetu.gov.in").first()
     if not admin_user:
@@ -119,6 +128,8 @@ def seed_db():
             department="CPCL IT Operations"
         )
         db.add(admin_user)
+    else:
+        _ensure_demo_password(admin_user, "admin123")
 
     db.commit()
 
@@ -138,6 +149,23 @@ def seed_db():
         db.add(vendor_a)
         db.commit()
         db.refresh(vendor_a)
+
+    # Remove only the known accidental test record observed in the local demo DB.
+    # The legitimate TechCorp demo bid uses the 48,275,000 amount below.
+    unwanted_bid = db.query(Bid).filter(
+        Bid.vendor_id == vendor_a.id,
+        Bid.bid_amount == "1000",
+    ).all()
+    for bid in unwanted_bid:
+        db.query(Notification).filter(Notification.related_entity_id == bid.id).delete(
+            synchronize_session=False
+        )
+        db.query(AuditEvent).filter(AuditEvent.bid_id == bid.id).delete(
+            synchronize_session=False
+        )
+        db.delete(bid)
+    if unwanted_bid:
+        db.commit()
 
     vendor_b = db.query(Vendor).filter(Vendor.name == "Global Heavy Industries").first()
     if not vendor_b:
@@ -168,6 +196,7 @@ def seed_db():
         )
         db.add(bidder_a)
     else:
+        _ensure_demo_password(bidder_a, "bidder123")
         bidder_a.vendor_id = vendor_a.id
 
     bidder_b = db.query(User).filter(User.email == "bidderb@bharatsetu.gov.in").first()
@@ -182,6 +211,7 @@ def seed_db():
         )
         db.add(bidder_b)
     else:
+        _ensure_demo_password(bidder_b, "bidder123")
         bidder_b.vendor_id = vendor_b.id
     db.commit()
 
@@ -198,6 +228,7 @@ def seed_db():
         )
         db.add(bidder_default)
     else:
+        _ensure_demo_password(bidder_default, "bidder123")
         bidder_default.vendor_id = vendor_a.id
         bidder_default.full_name = "Rajesh Verma"
         bidder_default.department = "Verma Industries"
@@ -465,7 +496,7 @@ def seed_db():
 
 
 def seed_demo_users():
-    """Create only the intended demo identities without changing existing passwords."""
+    """Create demo identities and repair only invalid demo password hashes."""
     Base.metadata.create_all(bind=engine)
     db: Session = SessionLocal()
     try:
@@ -503,7 +534,8 @@ def seed_demo_users():
             ("bidder@bharatsetu.gov.in", "bidder123", "Rajesh Verma", "BIDDER", "Verma Industries", vendor_a.id),
         )
         for email, password, full_name, role, department, vendor_id in demo_users:
-            if not db.query(User).filter(User.email == email).first():
+            existing_user = db.query(User).filter(User.email == email).first()
+            if not existing_user:
                 db.add(User(
                     email=email,
                     hashed_password=get_password_hash(password),
@@ -513,6 +545,8 @@ def seed_demo_users():
                     vendor_id=vendor_id,
                     is_active=True,
                 ))
+            else:
+                _ensure_demo_password(existing_user, password)
         db.commit()
     finally:
         db.close()

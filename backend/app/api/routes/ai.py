@@ -20,7 +20,33 @@ def ai_support_chat(
     if not query:
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
     
-    if "what documents am i missing" in query:
+    is_documents_needed = (
+        "what documents do i need" in query
+        or "what documents am i missing" in query
+        or "कौन से दस्तावेज" in query
+        or "कोणती कागदपत्रे" in query
+    )
+    is_missing_document = (
+        "which document is missing" in query
+        or "what document is missing" in query
+        or "कौन सा दस्तावेज" in query
+        or "कोणते कागदपत्र गहाळ" in query
+    )
+    is_failed_document = "which documents failed" in query or "failed documents" in query
+    is_flagged_document = (
+        "why was this document flagged" in query
+        or "why is my bid flagged" in query
+        or "चिह्नित क्यों" in query
+        or "का नोंदवले" in query
+    )
+    is_fix_request = (
+        "how do i fix" in query
+        or "how can i fix" in query
+        or "कैसे ठीक" in query
+        or "कशी सोडवू" in query
+    )
+
+    if is_documents_needed or is_missing_document:
         if not current_user.vendor_id:
             return {"reply": "[MOCK AI] You do not have a registered vendor profile yet."}
             
@@ -28,7 +54,7 @@ def ai_support_chat(
         if not bids:
             return {"reply": "[MOCK AI] You have not submitted any bids yet, so there are no required documents."}
             
-        reply = "[MOCK AI] Here are the missing documents for your active bids:\n\n"
+        reply = "[MOCK AI] Here are the required documents for your active bids:\n\n" if is_documents_needed else "[MOCK AI] Missing documents in your active bids:\n\n"
         for bid in bids:
             tender = bid.tender
             if not tender: continue
@@ -38,9 +64,33 @@ def ai_support_chat(
             
             missing = [r.document_type.upper() for r in reqs if r.is_mandatory and r.document_type.upper() not in docs]
             if missing:
-                reply += f"- **Bid {bid.bid_id}**: Missing {', '.join(missing)}\n"
+                reply += f"- **Bid {bid.bid_id}**: {'Required' if is_documents_needed else 'Missing'} {', '.join(missing)}\n"
             else:
-                reply += f"- **Bid {bid.bid_id}**: All mandatory documents are uploaded.\n"
+                if is_documents_needed:
+                    required = [r.document_type.upper() for r in reqs if r.is_mandatory]
+                    reply += f"- **Bid {bid.bid_id}**: Required documents are {', '.join(required) or 'not configured'}.\n"
+                else:
+                    reply += f"- **Bid {bid.bid_id}**: No mandatory document is missing.\n"
+        return {"reply": reply}
+
+    if is_failed_document:
+        if not current_user.vendor_id:
+            return {"reply": "[MOCK AI] You do not have a registered vendor profile yet."}
+        bids = db.query(Bid).filter(Bid.vendor_id == current_user.vendor_id).all()
+        failed = [
+            (bid.bid_id, doc.document_type, doc.detail)
+            for bid in bids
+            for doc in bid.documents
+            if doc.document_status.upper() in {"FAILED", "EXPIRED", "WARNING"}
+        ]
+        if not failed:
+            return {"reply": "[MOCK AI] No failed documents were found in your bids."}
+        reply = "[MOCK AI] Documents needing attention:\n\n"
+        for bid_id, document_type, detail in failed:
+            reply += f"- **Bid {bid_id}**: {document_type} (FAILED)"
+            if detail:
+                reply += f" — {detail}"
+            reply += "\n"
         return {"reply": reply}
         
     if "what is my compliance status" in query:
@@ -57,7 +107,7 @@ def ai_support_chat(
             reply += f"- **Bid {bid.bid_id}**: Status is **{bid.status}**, Risk Level is **{bid.risk_level}**, Compliance Score is **{score:.1f}%**.\n"
         return {"reply": reply}
         
-    if "why is my bid flagged" in query:
+    if is_flagged_document:
         if not current_user.vendor_id:
             return {"reply": "[MOCK AI] You do not have a registered vendor profile yet."}
             
@@ -84,6 +134,38 @@ def ai_support_chat(
                 for v in failed_verifs:
                     reply += f"    * {v.document_type} from {v.source}\n"
         return {"reply": reply}
+
+    if is_fix_request:
+        if not current_user.vendor_id:
+            return {"reply": "[MOCK AI] You do not have a registered vendor profile yet."}
+        bids = db.query(Bid).filter(Bid.vendor_id == current_user.vendor_id).all()
+        if not bids:
+            return {"reply": "[MOCK AI] You have no active bids with remediation information."}
+        reply = "[MOCK AI] Recommended next steps:\n\n"
+        found = False
+        for bid in bids:
+            failed_rules = [r for r in bid.rule_results if getattr(r, "result", "").upper() == "FAIL"]
+            failed_verifs = [v for v in bid.verifications if not getattr(v, "verified", False)]
+            if not failed_rules and not failed_verifs:
+                continue
+            found = True
+            reply += f"- **Bid {bid.bid_id}**:\n"
+            for rule in failed_rules:
+                action = getattr(rule, "recommended_action", None) or getattr(rule, "finding", None)
+                if action:
+                    reply += f"  * {getattr(rule, 'document_type', 'Compliance')}: {action}\n"
+            for verification in failed_verifs:
+                detail = (verification.raw_response or {}).get("detail") if verification.raw_response else None
+                if detail:
+                    reply += f"  * {verification.document_type}: {detail}\n"
+        if not found:
+            return {"reply": "[MOCK AI] No current remediation issue was found for your bids."}
+        return {"reply": reply}
+
+    if any(term in query for term in ("approve my bid", "reject my bid", "approve", "reject", "मंजूर", "नाकार")):
+        return {
+            "reply": "[MOCK AI] I cannot approve or reject a bid. Compliance results are advisory; an authorized procurement officer makes the final decision."
+        }
 
     if "do i have any alerts" in query:
         alerts = db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read == False).order_by(Notification.created_at.desc()).limit(5).all()

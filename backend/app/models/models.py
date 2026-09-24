@@ -275,6 +275,10 @@ class Notification(Base):
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utc_now)
     related_entity_id = Column(String, nullable=True)
+    channel = Column(String, default="IN_APP", nullable=False)
+    delivery_status = Column(String, default="SENT", nullable=False)
+    provider_reference = Column(String, nullable=True)
+    failure_reason = Column(Text, nullable=True)
 
 class SupportTicket(Base):
     __tablename__ = "support_tickets"

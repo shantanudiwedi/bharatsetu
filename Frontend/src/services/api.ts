@@ -35,6 +35,7 @@ export interface BidRecord {
   documents: {
     id: string;
     name: string;
+    document_type?: string;
     status: 'verified' | 'failed' | 'pending';
     source: string;
     detail: string;
@@ -50,6 +51,11 @@ export interface BidRecord {
   }[];
   officer?: string;
   tender_title?: string;
+  requirements?: {
+    document_type: string;
+    is_mandatory: boolean;
+    description?: string;
+  }[];
 }
 
 export interface DocumentRecord {
@@ -138,9 +144,12 @@ export const escalateBidApi = async (bidId: string, reason: string) => {
   return res.data;
 };
 
-export const uploadBidDocument = async (bidId: string, file: File) => {
+export const uploadBidDocument = async (bidId: string, file: File, documentType?: string) => {
   const formData = new FormData();
   formData.append('file', file);
+  if (documentType) {
+    formData.append('document_type', documentType);
+  }
   const res = await api.post(`/bids/${bidId}/documents`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
@@ -196,6 +205,12 @@ export const downloadDocumentApi = async (docId: string, filename?: string) => {
 
 export const downloadComplianceReportApi = async (bidId: string) => {
   const res = await api.get(`/reports/bids/${bidId}`, { responseType: 'blob' });
+  const contentType = String(res.headers['content-type'] || '').toLowerCase();
+  const firstBytes = new Uint8Array(await res.data.slice(0, 5).arrayBuffer());
+  const pdfSignature = String.fromCharCode(...firstBytes) === '%PDF-';
+  if (!contentType.includes('application/pdf') || !pdfSignature) {
+    throw new Error('The compliance report response was not a valid PDF.');
+  }
   const blob = new Blob([res.data], { type: 'application/pdf' });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');

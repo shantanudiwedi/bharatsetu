@@ -18,6 +18,10 @@ from app.api.routes.notifications import router as notifications_router
 from app.api.routes.support import router as support_router
 from app.api.routes.bidder import router as bidder_router
 from app.api.routes.ai import router as ai_router
+from app.services.notifications.deadline_scheduler import (
+    start_deadline_scheduler,
+    stop_deadline_scheduler,
+)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -59,6 +63,12 @@ def on_startup():
         seed_demo_users()
     else:
         seed_db()
+    start_deadline_scheduler()
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    stop_deadline_scheduler()
 
 
 @app.get("/")
